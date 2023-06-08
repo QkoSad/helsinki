@@ -3,7 +3,11 @@ const cors = require('cors')
 const morgan = require("morgan");
 
 const app = express();
+// middleware to deal with same origin
 app.use(cors())
+
+// middleware to allow express to deliver html
+// it is unclear to me why i cant just make a get method that deals with that
 app.use(express.static('build'))
 app.use(express.json())
 
