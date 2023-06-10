@@ -1,55 +1,41 @@
+require("dotenv").config();
 const express = require("express");
-const cors = require('cors')
+const cors = require("cors");
 const morgan = require("morgan");
+const Person = require("./models/person");
 
 const app = express();
-// middleware to deal with same origin
-app.use(cors())
 
-// middleware to allow express to deliver html
-// it is unclear to me why i cant just make a get method that deals with that
-app.use(express.static('build'))
-app.use(express.json())
+const errorHandler = (error, req, res, next) => {
+  console.log(err.message);
+  if (err.name === "CastError")
+    return res.status(404).send({ error: "malformatted id" });
 
+  next(err);
+};
 
 morgan.token("type", function (req, res) {
-  return String(JSON.stringify(req.body))
+  return String(JSON.stringify(req.body));
 });
-
+// middleware to deal with same origin
+app.use(cors());
+// middleware to allow express to deliver html
+// it is unclear to me why i cant just make a get method that deals with that
+app.use(express.static("build"));
+// transfprms it to jsontransfprms it to json
+app.use(express.json());
+// adding additional information on request
 app.use(
   morgan(":method :url :status :res[content-length] - :response-time ms :type")
 );
+app.use(errorHandler);
 
-const data = [
-  {
-    id: 0,
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: 1,
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: 2,
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: 3,
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: 4,
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
-
-app.get("/api/persons", (req, res) => {
-  res.send(data);
+app.get("/api/persons", (req, res, next) => {
+  Person.find({})
+    .then((persons) => {
+      res.json(persons);
+    })
+    .catch((err) => next(err));
 });
 
 const date = new Date();
@@ -57,28 +43,47 @@ app.get("/api/info", (req, res) => {
   res.send(`Phonebook has info for ${data.length} persons <br />${date}`);
 });
 
-app.get("/api/persons/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const person = data.find((el) => el.id === id);
-  if (!person) return res.status(404).end();
-  res.send(person);
+app.get("/api/persons/:id", (req, res, next) => {
+  Person.findById(req.params.id)
+    .then((person) => {
+      if (person) res.json(person);
+      else res.status(404).end();
+    })
+    .catch((err) => next(err));
 });
 app.post("/api/persons", (req, res) => {
   const body = req.body;
-  if (!body.number || !body.name)
-    return res.status(400).json({ error: "Missing name or number" });
-  if (data.find((el) => el.name === body.name))
-    return res.status(400).json({ error: "User already exists" });
-  const person = {
+  const person = new Person({
     name: body.name,
     number: body.number,
     id: Math.floor(Math.random() * 1000),
-  };
-
-  data.concat(person);
-  res.send(person);
+  });
+  person.save().then((savedPerson) => {
+    res.json(savedPerson);
+  });
 });
-const PORT = process.env.PORT || 3001
+app.put("/api/persons/:id", (req, res, next) => {
+  const body = req.body;
+  const person = {
+    name: body.name,
+    number: body.number,
+  };
+  Person.findOneAndUpdate(req.params.is, person, { new: true })
+    .then((updatedPerson) => {
+      res.json(updatedPerson);
+    })
+    .catch((err) => next(err));
+});
+app.delete("/api/persons/:id", (req, res, next) => {
+  Person.findByIdAndRemove(req.params.id)
+    .then((result) => {
+      console.log("result:", result);
+      res.status(204).end();
+    })
+    .catch((err) => next(err));
+});
+
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+  console.log(`Server running on port ${PORT}`);
+});
