@@ -20,17 +20,24 @@ function PersonForm({ persons, setPersons, displayMessage }) {
         })
         .catch((err) => {
           console.error(err.message);
-          displayMessage("Number has already been removed",'error');
+          displayMessage("Number has already been removed", "error");
         });
     } else {
       personServices
         .create(newPerson)
-        .then(setPersons([...persons, newPerson]));
-      displayMessage("Person added");
+        .then(() => {
+          setPersons([...persons, newPerson]);
+          displayMessage("Person Added");
+        })
+        .catch((error) => {
+          console.log(error.response.data)
+          displayMessage('Validation Error', "error");
+        });
     }
     setNewName("");
     setNewNumber("");
   }
+
   return (
     <form onSubmit={onAddPerson}>
       <div>

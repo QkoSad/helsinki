@@ -10,7 +10,8 @@ const errorHandler = (error, req, res, next) => {
   console.log(err.message);
   if (err.name === "CastError")
     return res.status(404).send({ error: "malformatted id" });
-
+  else if (err.name === "ValidationError")
+    return res.status(400).json({ error: err.message });
   next(err);
 };
 
@@ -37,12 +38,12 @@ app.get("/api/persons", (req, res, next) => {
     })
     .catch((err) => next(err));
 });
-
+/* currently not used
 const date = new Date();
 app.get("/api/info", (req, res) => {
   res.send(`Phonebook has info for ${data.length} persons <br />${date}`);
 });
-
+*/
 app.get("/api/persons/:id", (req, res, next) => {
   Person.findById(req.params.id)
     .then((person) => {
@@ -51,24 +52,27 @@ app.get("/api/persons/:id", (req, res, next) => {
     })
     .catch((err) => next(err));
 });
-app.post("/api/persons", (req, res) => {
+app.post("/api/persons", (req, res, next) => {
   const body = req.body;
   const person = new Person({
     name: body.name,
     number: body.number,
     id: Math.floor(Math.random() * 1000),
   });
-  person.save().then((savedPerson) => {
-    res.json(savedPerson);
-  });
+  person
+    .save()
+    .then((savedPerson) => {
+      res.json(savedPerson);
+    })
+    .catch((err) => next(err));
 });
 app.put("/api/persons/:id", (req, res, next) => {
-  const body = req.body;
-  const person = {
-    name: body.name,
-    number: body.number,
-  };
-  Person.findOneAndUpdate(req.params.is, person, { new: true })
+  const { name, number } = req.body;
+  Person.findOneAndUpdate(
+    req.params.id,
+    { name, number },
+    { new: true, runValidators: true, context: "query" }
+  )
     .then((updatedPerson) => {
       res.json(updatedPerson);
     })
